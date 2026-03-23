@@ -29,7 +29,6 @@ class Vector:
     def __mul__( vector, scalar ):
         return Vector( vector.x * scalar, vector.y * scalar, vector.z * scalar )
 
-    # not sure if this will work
     def __rmul__( vector, scalar ):
         return Vector( vector.x * scalar, vector.y * scalar, vector.z * scalar )
 
@@ -41,7 +40,6 @@ class Vector:
     def __div__( vector, scalar):
         return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
 
-    # not sure if this will work
     def __rdiv__( vector, scalar ):
         return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
 
@@ -94,6 +92,7 @@ viewport_distance = 1
 viewport_width = 1
 viewport_height = 1
 viewport_max = 1000
+background = ( 255, 255, 255 )
 
 def canvas_to_viewport( cx, cy ):
     vx = viewport_width * ( cx - canvas_width / 2 ) / canvas_width
@@ -102,16 +101,6 @@ def canvas_to_viewport( cx, cy ):
     viewport_right = Vector.cross( camera_dir, camera_up )
     viewport_up = Vector.cross( viewport_right, camera_dir )
     return camera_pos + viewport_distance * camera_dir + vx * viewport_right + vy * viewport_up
-
-pygame.init()
-display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
-display.fill( ( 255, 255, 255 ) )
-pygame.display.set_caption( "py-render" )
-
-clock = pygame.time.Clock()
-
-def put_pixel( x, y, color ):
-    display.set_at( ( x, y ), color )
 
 scene = [
     Sphere( Vector( 0, -1, 3 ), 1, ( 255, 0, 0 ) ),
@@ -135,16 +124,32 @@ def find_intersection( origin, direction, t_min, t_max ):
 
     return closest_object
 
-for cx in range( canvas_width ):
-    for cy in range( canvas_height ):
-        p = canvas_to_viewport( cx, cy )
-        object = find_intersection( camera_pos, p - camera_pos, viewport_distance, viewport_max )
-        if object: put_pixel( cx, cy, object.color )
+def ray_trace( cx, cy ):
+    p = canvas_to_viewport( cx, cy )
+    d = p - camera_pos
+    object = find_intersection( camera_pos, d, viewport_distance, viewport_max )
+    return object.color if object else background
+
+pygame.init()
+display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
+pygame.display.set_caption( "py-render" )
+
+clock = pygame.time.Clock()
+
+def put_pixel( x, y, color ):
+    display.set_at( ( x, y ), color )
+
+def render():
+    for cx in range( canvas_width ):
+        for cy in range( canvas_height ):
+            put_pixel( cx, cy, ray_trace( cx, cy ) )
 
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             raise SystemExit
+    render()
     pygame.display.update()
     clock.tick( 60 )
+    print( "tick" )
