@@ -31,7 +31,6 @@ class Sphere:
         self.radius = radius
         self.color = color
 
-    # TODO: Can we return only the t with the smaller value, i.e. t2?
     def intersect( self, origin, direction ):
         position = Vector.sub( self.position, origin )
 
@@ -40,11 +39,10 @@ class Sphere:
         c = position.len_sq() - self.radius * self.radius
 
         d = b * b - a * c
-        if d < 0: return ( math.inf, math.inf )
+        if d < 0: return math.inf
 
-        t1 = ( b + math.sqrt( d ) ) / a
         t2 = ( b - math.sqrt( d ) ) / a
-        return ( t1, t2 )
+        return t2 if t2 > 0 else math.inf
 
 canvas_width = 480
 canvas_height = 480
@@ -78,22 +76,27 @@ scene = [
     Sphere( Vector( -2, 0, 4 ), 1, ( 0, 255, 0 ) ),
 ]
 
+def find_intersection( origin, direction, t_min, t_max ):
+    closest_t = math.inf
+    closest_object = None
+
+    for object in scene:
+        t = object.intersect( origin, direction )
+
+        if t < t_min: continue
+        if t > t_max: continue
+
+        if t < closest_t:
+            closest_t = t
+            closest_object = object
+
+    return closest_object
+
 for cx in range( canvas_width ):
     for cy in range( canvas_height ):
         p = canvas_to_viewport( cx, cy )
-
-        closest_t = math.inf
-        closest_object = None
-        for object in scene:
-            t1, t2 = object.intersect( camera_pos, Vector.sub( p, camera_pos ) )
-            if t1 >= viewport_distance and t1 < viewport_max and t1 < closest_t:
-                closest_t = t1
-                closest_object = object
-            if t2 >= viewport_distance and t2 < viewport_max and t2 < closest_t:
-                closest_t = t2
-                closest_object = object
-        if closest_object:
-            put_pixel( cx, cy, closest_object.color )
+        object = find_intersection( camera_pos, Vector.sub( p, camera_pos), viewport_distance, viewport_max )
+        if object: put_pixel( cx, cy, object.color )
 
 while True:
     for event in pygame.event.get():
