@@ -7,14 +7,48 @@ class Vector:
         self.y = y
         self.z = z
 
-    def add( lhs, rhs ):
+    def __add__( lhs, rhs ):
         return Vector( lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z )
 
-    def sub( lhs, rhs ):
+    def __iadd__( self, other ):
+        self.x += other.x
+        self.y += other.y
+        self.z += other.z
+
+    def __neg__( vector ):
+        return Vector( -vector.x, -vector.y, -vector.z )
+
+    def __sub__( lhs, rhs ):
         return Vector( lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z )
 
-    def mult( vector, scalar ):
+    def __isub__( self, other ):
+        self.x -= other.x
+        self.y -= other.y
+        self.z -= other.z
+
+    def __mul__( vector, scalar ):
         return Vector( vector.x * scalar, vector.y * scalar, vector.z * scalar )
+
+    # not sure if this will work
+    def __rmul__( vector, scalar ):
+        return Vector( vector.x * scalar, vector.y * scalar, vector.z * scalar )
+
+    def __imul__( self, scalar ):
+        self.x *= scalar
+        self.y *= scalar
+        self.z *= scalar
+
+    def __div__( vector, scalar):
+        return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
+
+    # not sure if this will work
+    def __rdiv__( vector, scalar ):
+        return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
+
+    def __idiv__( self, scalar ):
+        self.x /= scalar
+        self.y /= scalar
+        self.z /= scalar    
 
     def dot( lhs, rhs ):
         return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
@@ -25,6 +59,13 @@ class Vector:
     def len( self ):
         return math.sqrt( self.len_sq() )
 
+    def cross( lhs, rhs ):
+        return Vector(
+            lhs.y * rhs.z - lhs.z * rhs.y,
+            lhs.z * rhs.x - lhs.x * rhs.z,
+            lhs.x * rhs.y - lhs.y * rhs.x
+        )
+
 class Sphere:
     def __init__( self, position, radius, color ):
         self.position = position
@@ -32,7 +73,7 @@ class Sphere:
         self.color = color
 
     def intersect( self, origin, direction ):
-        position = Vector.sub( self.position, origin )
+        position = self.position - origin
 
         a = direction.len_sq()
         b = Vector.dot( position, direction )
@@ -48,17 +89,19 @@ canvas_width = 480
 canvas_height = 480
 camera_pos = Vector( 0, 0, 0 )
 camera_dir = Vector( 0, 0, 1 )
+camera_up = Vector( 0, 1, 0 )
 viewport_distance = 1
 viewport_width = 1
 viewport_height = 1
 viewport_max = 1000
 
-# TODO: This only works if the camera is at the origin looking down the z axis
 def canvas_to_viewport( cx, cy ):
-    return Vector (
-        ( cx - canvas_width / 2 ) * viewport_width / canvas_width, 
-        -( cy - canvas_height / 2 ) * viewport_height / canvas_height, 
-        viewport_distance )
+    vx = viewport_width * ( cx - canvas_width / 2 ) / canvas_width
+    vy = viewport_height * ( canvas_height / 2 - cy ) / canvas_height
+
+    viewport_right = Vector.cross( camera_dir, camera_up )
+    viewport_up = Vector.cross( viewport_right, camera_dir )
+    return camera_pos + viewport_distance * camera_dir + vx * viewport_right + vy * viewport_up
 
 pygame.init()
 display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
@@ -95,7 +138,7 @@ def find_intersection( origin, direction, t_min, t_max ):
 for cx in range( canvas_width ):
     for cy in range( canvas_height ):
         p = canvas_to_viewport( cx, cy )
-        object = find_intersection( camera_pos, Vector.sub( p, camera_pos), viewport_distance, viewport_max )
+        object = find_intersection( camera_pos, p - camera_pos, viewport_distance, viewport_max )
         if object: put_pixel( cx, cy, object.color )
 
 while True:
