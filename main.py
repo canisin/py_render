@@ -50,6 +50,7 @@ viewport_width = 1
 viewport_height = 1
 viewport_max = 1000
 
+# TODO: This only works if the camera is at the origin looking down the z axis
 def canvas_to_viewport( cx, cy ):
     return Vector (
         ( cx - canvas_width / 2 ) * viewport_width / canvas_width, 
