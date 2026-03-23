@@ -87,7 +87,7 @@ for cx in range( canvas_width ):
                 closest_t = t2
                 closest_object = object
         if closest_object:
-            put_pixel( cx, cy, object.color )
+            put_pixel( cx, cy, closest_object.color )
 
 while True:
     for event in pygame.event.get():
