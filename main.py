@@ -53,7 +53,7 @@ viewport_max = 1000
 def canvas_to_viewport( cx, cy ):
     return Vector (
         ( cx - canvas_width / 2 ) * viewport_width / canvas_width, 
-        ( cy - canvas_height / 2 ) * viewport_height / canvas_height, 
+        -( cy - canvas_height / 2 ) * viewport_height / canvas_height, 
         viewport_distance )
 
 pygame.init()
