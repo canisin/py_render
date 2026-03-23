@@ -19,26 +19,31 @@ class Vector:
     def dot( lhs, rhs ):
         return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
 
+    def len_sq( self ):
+        return Vector.dot( self, self )
+
+    def len( self ):
+        return math.sqrt( self.len_sq() )
+
 class Sphere:
     def __init__( self, position, radius, color ):
         self.position = position
         self.radius = radius
         self.color = color
 
-    # TODO: Can we assume that direction is a unit vector?
     # TODO: Can we return only the t with the smaller value, i.e. t2?
     def intersect( self, origin, direction ):
-        position_to_origin = Vector.sub( origin, self.position )
+        position = Vector.sub( self.position, origin )
 
-        a = Vector.dot( direction, direction )
-        b = 2 * Vector.dot( position_to_origin, direction )
-        c = Vector.dot( position_to_origin, position_to_origin ) - self.radius * self.radius
+        a = direction.len_sq()
+        b = Vector.dot( position, direction )
+        c = position.len_sq() - self.radius * self.radius
 
-        d = b * b - 4 * a * c
+        d = b * b - a * c
         if d < 0: return ( math.inf, math.inf )
 
-        t1 = ( -b + math.sqrt( d ) ) / ( 2 * a )
-        t2 = ( -b - math.sqrt( d ) ) / ( 2 * a )
+        t1 = ( b + math.sqrt( d ) ) / a
+        t2 = ( b - math.sqrt( d ) ) / a
         return ( t1, t2 )
 
 canvas_width = 480
