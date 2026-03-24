@@ -156,9 +156,21 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             raise SystemExit
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_w:
+                camera_pos += camera_dir
+            elif event.key == pygame.K_s:
+                camera_pos -= camera_dir
+            elif event.key == pygame.K_a:
+                camera_pos += Vector.cross( camera_up, camera_dir )
+            elif event.key == pygame.K_d:
+                camera_pos += Vector.cross( camera_dir, camera_up )
+            elif event.key == pygame.K_LSHIFT:
+                camera_pos += camera_up
+            elif event.key == pygame.K_LCTRL:
+                camera_pos -= camera_up
     render()
     pygame.display.update()
     clock.tick( 60 )
     print( "tick" )
-    camera_pos -= camera_dir
     print( camera_pos )
