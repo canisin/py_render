@@ -7,6 +7,9 @@ class Vector:
         self.y = y
         self.z = z
 
+    def __str__( self ):
+        return f"[ { self.x }, { self.y }, { self.z } ]"
+
     def __add__( lhs, rhs ):
         return Vector( lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z )
 
@@ -14,6 +17,7 @@ class Vector:
         self.x += other.x
         self.y += other.y
         self.z += other.z
+        return self
 
     def __neg__( vector ):
         return Vector( -vector.x, -vector.y, -vector.z )
@@ -25,6 +29,7 @@ class Vector:
         self.x -= other.x
         self.y -= other.y
         self.z -= other.z
+        return self
 
     def __mul__( vector, scalar ):
         return Vector( vector.x * scalar, vector.y * scalar, vector.z * scalar )
@@ -36,6 +41,7 @@ class Vector:
         self.x *= scalar
         self.y *= scalar
         self.z *= scalar
+        return self
 
     def __div__( vector, scalar):
         return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
@@ -46,7 +52,8 @@ class Vector:
     def __idiv__( self, scalar ):
         self.x /= scalar
         self.y /= scalar
-        self.z /= scalar    
+        self.z /= scalar
+        return self
 
     def dot( lhs, rhs ):
         return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
@@ -153,3 +160,5 @@ while True:
     pygame.display.update()
     clock.tick( 60 )
     print( "tick" )
+    camera_pos -= camera_dir
+    print( camera_pos )
