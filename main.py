@@ -114,6 +114,29 @@ class Camera:
     def translate_right():
         Camera.position -= Camera.left
 
+    rotation_cos = math.cos( math.pi / 8 )
+    rotation_sin = math.sin( math.pi / 8 )
+
+    def rotate_up():
+        forward = Camera.forward
+        Camera.forward = Camera.rotation_cos * Camera.forward + Camera.rotation_sin * Camera.up
+        Camera.up = Camera.rotation_cos * Camera.up - Camera.rotation_sin * forward
+
+    def rotate_down():
+        forward = Camera.forward
+        Camera.forward = Camera.rotation_cos * Camera.forward - Camera.rotation_sin * Camera.up
+        Camera.up = Camera.rotation_cos * Camera.up + Camera.rotation_sin * forward
+
+    def rotate_left():
+        left = Camera.left
+        Camera.left = Camera.rotation_cos * Camera.left - Camera.rotation_sin * Camera.forward
+        Camera.forward = Camera.rotation_cos * Camera.forward + Camera.rotation_sin * left
+
+    def rotate_right():
+        left = Camera.left
+        Camera.left = Camera.rotation_cos * Camera.left + Camera.rotation_sin * Camera.forward
+        Camera.forward = Camera.rotation_cos * Camera.forward - Camera.rotation_sin * left
+
 canvas_width = 480
 canvas_height = 480
 viewport_distance = 1
@@ -191,6 +214,15 @@ while True:
                 Camera.translate_up()
             elif event.key == pygame.K_LCTRL:
                 Camera.translate_down()
+            elif event.key == pygame.K_UP:
+                Camera.rotate_up()
+            elif event.key == pygame.K_DOWN:
+                Camera.rotate_down()
+            elif event.key == pygame.K_LEFT:
+                Camera.rotate_left()
+            elif event.key == pygame.K_RIGHT:
+                Camera.rotate_right()
+
     render()
     pygame.display.update()
     clock.tick( 60 )
