@@ -90,11 +90,32 @@ class Sphere:
         t2 = ( b - math.sqrt( d ) ) / a
         return t2 if t2 > 0 else math.inf
 
+class Camera:
+    position = Vector( 0, 0, 0 )
+    forward = Vector( 0, 0, 1 )
+    up = Vector( 0, 1, 0 )
+    left = Vector( -1, 0, 0 )
+
+    def translate_up():
+        Camera.position += Camera.up
+
+    def translate_down():
+        Camera.position -= Camera.up
+
+    def translate_forward():
+        Camera.position += Camera.forward
+
+    def translate_backward():
+        Camera.position -= Camera.forward
+
+    def translate_left():
+        Camera.position += Camera.left
+
+    def translate_right():
+        Camera.position -= Camera.left
+
 canvas_width = 480
 canvas_height = 480
-camera_pos = Vector( 0, 0, 0 )
-camera_dir = Vector( 0, 0, 1 )
-camera_up = Vector( 0, 1, 0 )
 viewport_distance = 1
 viewport_width = 1
 viewport_height = 1
@@ -105,9 +126,8 @@ def canvas_to_viewport( cx, cy ):
     vx = viewport_width * ( cx - canvas_width / 2 ) / canvas_width
     vy = viewport_height * ( canvas_height / 2 - cy ) / canvas_height
 
-    viewport_right = Vector.cross( camera_dir, camera_up )
-    viewport_up = Vector.cross( viewport_right, camera_dir )
-    return camera_pos + viewport_distance * camera_dir + vx * viewport_right + vy * viewport_up
+    return Camera.position + viewport_distance * Camera.forward \
+        - vx * Camera.left + vy * Camera.up
 
 scene = [
     Sphere( Vector( 0, -1, 3 ), 1, ( 255, 0, 0 ) ),
@@ -132,9 +152,10 @@ def find_intersection( origin, direction, t_min, t_max ):
     return closest_object
 
 def ray_trace( cx, cy ):
-    p = canvas_to_viewport( cx, cy )
-    d = p - camera_pos
-    object = find_intersection( camera_pos, d, viewport_distance, viewport_max )
+    vp = canvas_to_viewport( cx, cy )
+    origin = Camera.position
+    direction = vp - origin
+    object = find_intersection( origin, direction, viewport_distance, viewport_max )
     return object.color if object else background
 
 pygame.init()
@@ -149,7 +170,8 @@ def put_pixel( x, y, color ):
 def render():
     for cx in range( canvas_width ):
         for cy in range( canvas_height ):
-            put_pixel( cx, cy, ray_trace( cx, cy ) )
+            color = ray_trace( cx, cy )
+            put_pixel( cx, cy, color )
 
 while True:
     for event in pygame.event.get():
@@ -158,19 +180,19 @@ while True:
             raise SystemExit
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
-                camera_pos += camera_dir
+                Camera.translate_forward()
             elif event.key == pygame.K_s:
-                camera_pos -= camera_dir
+                Camera.translate_backward()
             elif event.key == pygame.K_a:
-                camera_pos += Vector.cross( camera_up, camera_dir )
+                Camera.translate_left()
             elif event.key == pygame.K_d:
-                camera_pos += Vector.cross( camera_dir, camera_up )
+                Camera.translate_right()
             elif event.key == pygame.K_LSHIFT:
-                camera_pos += camera_up
+                Camera.translate_up()
             elif event.key == pygame.K_LCTRL:
-                camera_pos -= camera_up
+                Camera.translate_down()
     render()
     pygame.display.update()
     clock.tick( 60 )
     print( "tick" )
-    print( camera_pos )
+    print( Camera.position )
