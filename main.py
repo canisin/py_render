@@ -43,13 +43,13 @@ class Vector:
         self.z *= scalar
         return self
 
-    def __div__( vector, scalar):
+    def __truediv__( vector, scalar):
         return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
 
-    def __rdiv__( vector, scalar ):
+    def __rtruediv__( vector, scalar ):
         return Vector( vector.x / scalar, vector.y / scalar, vector.z / scalar )
 
-    def __idiv__( self, scalar ):
+    def __itruediv__( self, scalar ):
         self.x /= scalar
         self.y /= scalar
         self.z /= scalar
