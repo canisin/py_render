@@ -79,10 +79,11 @@ class Vector:
         )
 
 class Sphere:
-    def __init__( self, position, radius, color ):
+    def __init__( self, position, radius, color, specular ):
         self.position = position
         self.radius = radius
         self.color = color
+        self.specular = specular
 
     def calc_normal( self, point ):
         return ( point - self.position ).normalize()
@@ -184,7 +185,7 @@ class Light:
         self.direction = direction.normalize()
         return self
 
-    def calc_intensity( self, point, normal ):
+    def calc_intensity( self, point, normal, view_direction, specular ):
         if self.type == Light.ambient:
             return self.intensity
 
@@ -195,15 +196,25 @@ class Light:
 
         dot_product = Vector.dot( normal, direction )
         if dot_product <= 0: return 0
-        return self.intensity * dot_product / ( direction.len() if self.type == Light.point else 1 )
+        divisor = direction.len() if self.type == Light.point else 1
+        intensity = self.intensity * dot_product / divisor
+
+        if specular > 0:
+            reflection_direction = 2 * normal * dot_product - direction
+            dot_product = Vector.dot( reflection_direction, view_direction )
+            if dot_product <= 0: return intensity
+            divisor *= view_direction.len()
+            intensity += self.intensity * math.pow( dot_product / divisor, specular )
+
+        return intensity
 
 class Scene:
     background = Vector( 255, 255, 255 )
     objects = [
-        Sphere( Vector( 0, -1, 3 ), 1, Vector( 255, 0, 0 ) ),
-        Sphere( Vector( 2, 0, 4 ), 1, Vector( 0, 0, 255 ) ),
-        Sphere( Vector( -2, 0, 4 ), 1, Vector( 0, 255, 0 ) ),
-        Sphere( Vector( 0, -5001, 0 ), 5000, Vector( 255, 255, 0 ) ),
+        Sphere( Vector( 0, -1, 3 ), 1, Vector( 255, 0, 0 ), 500 ),
+        Sphere( Vector( 2, 0, 4 ), 1, Vector( 0, 0, 255 ), 500 ),
+        Sphere( Vector( -2, 0, 4 ), 1, Vector( 0, 255, 0 ), 10 ),
+        Sphere( Vector( 0, -5001, 0 ), 5000, Vector( 255, 255, 0 ), 1000 ),
     ]
     lights = [
         Light.Ambient( 0.2 ),
@@ -240,8 +251,14 @@ def ray_trace( cx, cy ):
     if not object: return Scene.background
     intersection = origin + distance * direction
     normal = object.calc_normal( intersection )
-    light = sum( light.calc_intensity( intersection, normal ) for light in Scene.lights )
-    return object.color * light
+    view_direction = origin - intersection
+    specular = object.specular
+    light = sum( light.calc_intensity( intersection, normal, view_direction, specular ) for light in Scene.lights )
+    color = object.color * light
+    color.x = min( color.x, 255 )
+    color.y = min( color.y, 255 )
+    color.z = min( color.z, 255 )
+    return color
 
 pygame.init()
 display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
