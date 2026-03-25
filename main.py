@@ -268,14 +268,19 @@ def render():
             color = ray_trace( cx, cy )
             put_pixel( cx, cy, color )
 
+def exit():
+    pygame.quit()
+    raise SystemExit
+
 paused = False
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            raise SystemExit
+            exit()
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
+            if event.key == pygame.K_ESCAPE:
+                exit()
+            elif event.key == pygame.K_w:
                 Camera.translate_forward()
             elif event.key == pygame.K_s:
                 Camera.translate_backward()
