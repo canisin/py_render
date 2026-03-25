@@ -64,6 +64,13 @@ class Vector:
     def len( self ):
         return math.sqrt( self.len_sq() )
 
+    def is_normal( self):
+        return self.len_sq() == 1
+
+    def normalize( self ):
+        self /= self.len()
+        return self
+
     def cross( lhs, rhs ):
         return Vector(
             lhs.y * rhs.z - lhs.z * rhs.y,
@@ -76,6 +83,10 @@ class Sphere:
         self.position = position
         self.radius = radius
         self.color = color
+
+    def calc_normal( self, point ):
+        # assume that the point is on the sphere
+        return ( point - self.position ) #.normalize()
 
     def intersect( self, origin, direction ):
         position = self.position - origin
@@ -180,15 +191,29 @@ class Light:
 
     def Directional( intensity, direction ):
         self = Light( Light.directional, intensity )
-        self.direction = direction
+        self.direction = direction.normalize()
         return self
 
+    def calc_intensity( self, point, normal ):
+        if self.type == Light.ambient:
+            return self.intensity
+
+        # TODO: not sure if this is valid syntax
+        if self.type == Light.point:
+            direction = self.position - point
+        elif self.type == Light.directional:
+            direction = self.direction
+
+        dot_product = Vector.dot( normal, direction )
+        if dot_product <= 0: return 0
+        return self.intensity * dot_product / ( direction.len() if self.type == Light.point else 1 )
+
 class Scene:
-    background = ( 255, 255, 255 )
+    background = Vector( 255, 255, 255 )
     objects = [
-        Sphere( Vector( 0, -1, 3 ), 1, ( 255, 0, 0 ) ),
-        Sphere( Vector( 2, 0, 4 ), 1, ( 0, 0, 255 ) ),
-        Sphere( Vector( -2, 0, 4 ), 1, ( 0, 255, 0 ) ),
+        Sphere( Vector( 0, -1, 3 ), 1, Vector( 255, 0, 0 ) ),
+        Sphere( Vector( 2, 0, 4 ), 1, Vector( 0, 0, 255 ) ),
+        Sphere( Vector( -2, 0, 4 ), 1, Vector( 0, 255, 0 ) ),
     ]
     lights = [
         Light.Ambient( 0.2 ),
@@ -215,14 +240,18 @@ def find_intersection( origin, direction, t_min, t_max ):
             closest_t = t
             closest_object = object
 
-    return closest_object
+    return closest_object, closest_t
 
 def ray_trace( cx, cy ):
-    vp = canvas_to_viewport( cx, cy )
+    point = canvas_to_viewport( cx, cy )
     origin = Camera.position
-    direction = vp - origin
-    object = find_intersection( origin, direction, viewport_distance, viewport_max )
-    return object.color if object else Scene.background
+    direction = point - origin
+    object, distance = find_intersection( origin, direction, viewport_distance, viewport_max )
+    if not object: return Scene.background
+    intersection = origin + distance * direction
+    normal = object.calc_normal( intersection )
+    light = sum( light.calc_intensity( intersection, normal ) for light in Scene.lights )
+    return object.color * light
 
 pygame.init()
 display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
@@ -231,7 +260,7 @@ pygame.display.set_caption( "py-render" )
 clock = pygame.time.Clock()
 
 def put_pixel( x, y, color ):
-    display.set_at( ( x, y ), color )
+    display.set_at( ( x, y ), ( color.x, color.y, color.z ) )
 
 def render():
     for cx in range( canvas_width ):
