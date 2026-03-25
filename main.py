@@ -85,8 +85,7 @@ class Sphere:
         self.color = color
 
     def calc_normal( self, point ):
-        # assume that the point is on the sphere
-        return ( point - self.position ) #.normalize()
+        return ( point - self.position ).normalize()
 
     def intersect( self, origin, direction ):
         position = self.position - origin
