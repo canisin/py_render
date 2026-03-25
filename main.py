@@ -91,14 +91,13 @@ class Sphere:
     def intersect( self, origin, direction ):
         position = self.position - origin
 
-        a = direction.len_sq()
         b = Vector.dot( position, direction )
         c = position.len_sq() - self.radius * self.radius
 
-        d = b * b - a * c
+        d = b * b - c
         if d < 0: return math.inf
 
-        t2 = ( b - math.sqrt( d ) ) / a
+        t2 = b - math.sqrt( d )
         return t2 if t2 > 0 else math.inf
 
 class Camera:
@@ -203,7 +202,6 @@ class Light:
             reflection_direction = 2 * normal * dot_product - direction
             dot_product = Vector.dot( reflection_direction, view_direction )
             if dot_product <= 0: return intensity
-            divisor *= view_direction.len()
             intensity += self.intensity * math.pow( dot_product / divisor, specular )
 
         return intensity
@@ -246,14 +244,13 @@ def find_intersection( origin, direction, t_min, t_max ):
 def ray_trace( cx, cy ):
     point = canvas_to_viewport( cx, cy )
     origin = Camera.position
-    direction = point - origin
+    direction = ( point - origin ).normalize()
     object, distance = find_intersection( origin, direction, viewport_distance, viewport_max )
     if not object: return Scene.background
     intersection = origin + distance * direction
     normal = object.calc_normal( intersection )
-    view_direction = origin - intersection
     specular = object.specular
-    light = sum( light.calc_intensity( intersection, normal, view_direction, specular ) for light in Scene.lights )
+    light = sum( light.calc_intensity( intersection, normal, -direction, specular ) for light in Scene.lights )
     color = object.color * light
     color.x = min( color.x, 255 )
     color.y = min( color.y, 255 )
@@ -316,5 +313,6 @@ while True:
         render()
         print( "tick" )
         print( Camera.position )
+        print( clock.get_rawtime() )
     pygame.display.update()
     clock.tick( 60 )
