@@ -268,6 +268,7 @@ def render():
             color = ray_trace( cx, cy )
             put_pixel( cx, cy, color )
 
+paused = False
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -294,9 +295,14 @@ while True:
                 Camera.rotate_left()
             elif event.key == pygame.K_RIGHT:
                 Camera.rotate_right()
+            elif event.key == pygame.K_p:
+                paused = not paused
+                if paused: print( "paused!" )
+                else: print( "resuming.." )
 
-    render()
+    if not paused:
+        render()
+        print( "tick" )
+        print( Camera.position )
     pygame.display.update()
     clock.tick( 60 )
-    print( "tick" )
-    print( Camera.position )
