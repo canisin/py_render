@@ -204,6 +204,7 @@ class Scene:
         Sphere( Vector( 0, -1, 3 ), 1, Vector( 255, 0, 0 ) ),
         Sphere( Vector( 2, 0, 4 ), 1, Vector( 0, 0, 255 ) ),
         Sphere( Vector( -2, 0, 4 ), 1, Vector( 0, 255, 0 ) ),
+        Sphere( Vector( 0, -5001, 0 ), 5000, Vector( 255, 255, 0 ) ),
     ]
     lights = [
         Light.Ambient( 0.2 ),
