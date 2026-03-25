@@ -167,15 +167,6 @@ class Light:
     point = 1
     directional = 2
 
-    # def __init__( self, type, intensity, position = None, direction = None )
-    #     assert( type in [ Light.ambient, Light.point, Light.directional ] )
-    #     self.type = type
-    #     self.intensity = intensity
-    #     if position: assert( type == Light.point )
-    #     self.position = position
-    #     if direction: assert( type == Light.directional )
-    #     self.direction = direction
-
     def __init__( self, type, intensity ):
         self.type = type
         self.intensity = intensity
@@ -198,7 +189,6 @@ class Light:
         if self.type == Light.ambient:
             return self.intensity
 
-        # TODO: not sure if this is valid syntax
         if self.type == Light.point:
             direction = self.position - point
         elif self.type == Light.directional:
