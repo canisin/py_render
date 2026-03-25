@@ -143,7 +143,6 @@ viewport_distance = 1
 viewport_width = 1
 viewport_height = 1
 viewport_max = 1000
-background = ( 255, 255, 255 )
 
 def canvas_to_viewport( cx, cy ):
     vx = viewport_width * ( cx - canvas_width / 2 ) / canvas_width
@@ -152,17 +151,61 @@ def canvas_to_viewport( cx, cy ):
     return Camera.position + viewport_distance * Camera.forward \
         - vx * Camera.left + vy * Camera.up
 
-scene = [
-    Sphere( Vector( 0, -1, 3 ), 1, ( 255, 0, 0 ) ),
-    Sphere( Vector( 2, 0, 4 ), 1, ( 0, 0, 255 ) ),
-    Sphere( Vector( -2, 0, 4 ), 1, ( 0, 255, 0 ) ),
-]
+class Light:
+    ambient = 0
+    point = 1
+    directional = 2
+
+    # def __init__( self, type, intensity, position = None, direction = None )
+    #     assert( type in [ Light.ambient, Light.point, Light.directional ] )
+    #     self.type = type
+    #     self.intensity = intensity
+    #     if position: assert( type == Light.point )
+    #     self.position = position
+    #     if direction: assert( type == Light.directional )
+    #     self.direction = direction
+
+    def __init__( self, type, intensity ):
+        self.type = type
+        self.intensity = intensity
+
+    def Ambient( intensity ):
+        self = Light( Light.ambient, intensity )
+        return self
+
+    def Point( intensity, position ):
+        self = Light( Light.point, intensity )
+        self.position = position
+        return self
+
+    def Directional( intensity, direction ):
+        self = Light( Light.directional, intensity )
+        self.direction = direction
+        return self
+
+class Scene:
+    background = ( 255, 255, 255 )
+    objects = [
+        Sphere( Vector( 0, -1, 3 ), 1, ( 255, 0, 0 ) ),
+        Sphere( Vector( 2, 0, 4 ), 1, ( 0, 0, 255 ) ),
+        Sphere( Vector( -2, 0, 4 ), 1, ( 0, 255, 0 ) ),
+    ]
+    lights = [
+        Light.Ambient( 0.2 ),
+        Light.Point( 0.6, Vector( 2, 1, 0 ) ),
+        Light.Directional( 0.2, Vector( 1, 4, 4 ) ),
+    ]
+
+# normalize light intensities
+total_intensity = sum( light.intensity for light in Scene.lights )
+for light in Scene.lights:
+    light.intensity /= total_intensity
 
 def find_intersection( origin, direction, t_min, t_max ):
     closest_t = math.inf
     closest_object = None
 
-    for object in scene:
+    for object in Scene.objects:
         t = object.intersect( origin, direction )
 
         if t < t_min: continue
@@ -179,7 +222,7 @@ def ray_trace( cx, cy ):
     origin = Camera.position
     direction = vp - origin
     object = find_intersection( origin, direction, viewport_distance, viewport_max )
-    return object.color if object else background
+    return object.color if object else Scene.background
 
 pygame.init()
 display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
