@@ -271,14 +271,13 @@ clock = pygame.time.Clock()
 def put_pixel( x, y, color ):
     display.set_at( ( x, y ), ( color.x, color.y, color.z ) )
 
-def render( pool, index = None ):
-    if index is None:
-        pool.map( lambda index: render( pool, index ), range( thread_count ) )
-        # for index in range( thread_count ):
-        #     display.blit( thread_surfaces[ index ], ( index * canvas_width / thread_count, 0 ) )
-        display.blits( ( surface, ( index * canvas_width / thread_count, 0 ) ) for index, surface in enumerate( thread_surfaces ) )
-        return
+def render( pool ):
+    pool.map( render_thread, range( thread_count ) )
+    # for index in range( thread_count ):
+    #     display.blit( thread_surfaces[ index ], ( index * canvas_width / thread_count, 0 ) )
+    display.blits( ( surface, ( index * canvas_width / thread_count, 0 ) ) for index, surface in enumerate( thread_surfaces ) )
 
+def render_thread( index ):
     for cx in range( canvas_width / thread_count ):
         cx += index * canvas_width / thread_count
         for cy in range( canvas_height ):
