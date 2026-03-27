@@ -1,5 +1,6 @@
 import pygame
 import math
+import multiprocessing
 
 class Vector:
     def __init__( self, x, y, z ):
@@ -261,13 +262,25 @@ pygame.init()
 display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
 pygame.display.set_caption( "py-render" )
 
+thread_count = 4
+assert( canvas_width % thread_count == 0 )
+thread_surfaces = [ pygame.Surface( ( canvas_width / thread_count, canvas_height ) ) for _ in range( thread_count ) ]    
+
 clock = pygame.time.Clock()
 
 def put_pixel( x, y, color ):
     display.set_at( ( x, y ), ( color.x, color.y, color.z ) )
 
-def render():
-    for cx in range( canvas_width ):
+def render( pool, index = None ):
+    if index is None:
+        pool.map( lambda index: render( pool, index ), range( thread_count ) )
+        # for index in range( thread_count ):
+        #     display.blit( thread_surfaces[ index ], ( index * canvas_width / thread_count, 0 ) )
+        display.blits( ( surface, ( index * canvas_width / thread_count, 0 ) ) for index, surface in enumerate( thread_surfaces ) )
+        return
+
+    for cx in range( canvas_width / thread_count ):
+        cx += index * canvas_width / thread_count
         for cy in range( canvas_height ):
             color = ray_trace( cx, cy )
             put_pixel( cx, cy, color )
@@ -276,43 +289,44 @@ def exit():
     pygame.quit()
     raise SystemExit
 
-paused = False
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            exit()
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
+with multiprocessing.Pool( thread_count ) as pool:
+    paused = False
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
                 exit()
-            elif event.key == pygame.K_w:
-                Camera.translate_forward()
-            elif event.key == pygame.K_s:
-                Camera.translate_backward()
-            elif event.key == pygame.K_a:
-                Camera.translate_left()
-            elif event.key == pygame.K_d:
-                Camera.translate_right()
-            elif event.key == pygame.K_LSHIFT:
-                Camera.translate_up()
-            elif event.key == pygame.K_LCTRL:
-                Camera.translate_down()
-            elif event.key == pygame.K_UP:
-                Camera.rotate_up()
-            elif event.key == pygame.K_DOWN:
-                Camera.rotate_down()
-            elif event.key == pygame.K_LEFT:
-                Camera.rotate_left()
-            elif event.key == pygame.K_RIGHT:
-                Camera.rotate_right()
-            elif event.key == pygame.K_p:
-                paused = not paused
-                if paused: print( "paused!" )
-                else: print( "resuming.." )
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    exit()
+                elif event.key == pygame.K_w:
+                    Camera.translate_forward()
+                elif event.key == pygame.K_s:
+                    Camera.translate_backward()
+                elif event.key == pygame.K_a:
+                    Camera.translate_left()
+                elif event.key == pygame.K_d:
+                    Camera.translate_right()
+                elif event.key == pygame.K_LSHIFT:
+                    Camera.translate_up()
+                elif event.key == pygame.K_LCTRL:
+                    Camera.translate_down()
+                elif event.key == pygame.K_UP:
+                    Camera.rotate_up()
+                elif event.key == pygame.K_DOWN:
+                    Camera.rotate_down()
+                elif event.key == pygame.K_LEFT:
+                    Camera.rotate_left()
+                elif event.key == pygame.K_RIGHT:
+                    Camera.rotate_right()
+                elif event.key == pygame.K_p:
+                    paused = not paused
+                    if paused: print( "paused!" )
+                    else: print( "resuming.." )
 
-    if not paused:
-        render()
-        print( "tick" )
-        print( Camera.position )
-        print( clock.get_rawtime() )
-    pygame.display.update()
-    clock.tick( 60 )
+        if not paused:
+            render( pool )
+            print( "tick" )
+            print( Camera.position )
+            print( clock.get_rawtime() )
+        pygame.display.update()
+        clock.tick( 60 )
