@@ -1,4 +1,6 @@
+import numpy as np
 import pygame
+import pygame.surfarray
 import math
 import multiprocessing
 
@@ -258,37 +260,41 @@ def ray_trace( origin, point ):
     color.z = min( color.z, 255 )
     return color
 
+thread_count = 4
+assert( canvas_width % thread_count == 0 )
+
 def initialize():
     pygame.init()
     global display
     display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
     pygame.display.set_caption( "py-render" )
 
-    global thread_count
-    thread_count = 4
-    assert( canvas_width % thread_count == 0 )
-    global thread_surfaces
-    thread_surfaces = [ pygame.Surface( ( canvas_width / thread_count, canvas_height ) ) for _ in range( thread_count ) ]    
+    global surfaces
+    surfaces = [ display.subsurface( ( index * canvas_width / thread_count, 0 ), ( canvas_width / thread_count, canvas_height ) ) for index in range( thread_count ) ]
 
     global clock
     clock = pygame.time.Clock()
 
-def put_pixel( surface, x, y, color ):
-    surface.set_at( ( x, y ), ( color.x, color.y, color.z ) )
+def put_pixel( x, y, color ):
+    surface[ x, y ] = [ color.x, color.y, color.z ]
 
 def render( pool ):
-    pool.map( render_thread, enumerate( thread_surfaces ) )
-    # for index in range( thread_count ):
-    #     display.blit( thread_surfaces[ index ], ( index * canvas_width / thread_count, 0 ) )
-    display.blits( ( surface, ( index * canvas_width / thread_count, 0 ) ) for index, surface in enumerate( thread_surfaces ) )
+    surface_arrays = pool.map( render_thread, range( thread_count ) )
+    for surface, surface_array in zip( surfaces, surface_arrays ):
+        pygame.surfarray.blit_array( surface, surface_array )
 
-def render_thread( index, surface ):
-    for cx in range( canvas_width / thread_count ):
+def initialize_thread():
+    global surface
+    surface = np.empty( ( canvas_width // thread_count, canvas_height, 3 ), dtype = np.uint8 )
+
+def render_thread( index ):
+    for cx in range( canvas_width // thread_count ):
         for cy in range( canvas_height ):
             origin = Camera.position
             point = canvas_to_viewport( cx + index * canvas_width / thread_count, cy )
             color = ray_trace( origin, point )
-            put_pixel( surface, cx, cy, color )
+            put_pixel( cx, cy, color )
+    return surface
 
 def handle_events():
     for event in pygame.event.get():
@@ -335,7 +341,7 @@ def exit():
 
 if __name__ == "__main__":
     initialize()
-    with multiprocessing.Pool( thread_count ) as pool:
+    with multiprocessing.Pool( thread_count, initialize_thread ) as pool:
         paused = False
         while True:
             handle_events()
