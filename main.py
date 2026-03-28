@@ -221,10 +221,12 @@ class Scene:
         Light.Directional( 0.2, Vector( 1, 4, 4 ) ),
     ]
 
-# normalize light intensities
-total_intensity = sum( light.intensity for light in Scene.lights )
-for light in Scene.lights:
-    light.intensity /= total_intensity
+    def normalize_lights():
+        total_intensity = sum( light.intensity for light in Scene.lights )
+        for light in Scene.lights:
+            light.intensity /= total_intensity
+
+Scene.normalize_lights()
 
 def find_intersection( origin, direction, t_min, t_max ):
     closest_t = math.inf
@@ -242,9 +244,7 @@ def find_intersection( origin, direction, t_min, t_max ):
 
     return closest_object, closest_t
 
-def ray_trace( cx, cy ):
-    point = canvas_to_viewport( cx, cy )
-    origin = Camera.position
+def ray_trace( origin, point ):
     direction = ( point - origin ).normalize()
     object, distance = find_intersection( origin, direction, viewport_distance, viewport_max )
     if not object: return Scene.background
@@ -258,74 +258,91 @@ def ray_trace( cx, cy ):
     color.z = min( color.z, 255 )
     return color
 
-pygame.init()
-display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
-pygame.display.set_caption( "py-render" )
+def initialize():
+    pygame.init()
+    global display
+    display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
+    pygame.display.set_caption( "py-render" )
 
-thread_count = 4
-assert( canvas_width % thread_count == 0 )
-thread_surfaces = [ pygame.Surface( ( canvas_width / thread_count, canvas_height ) ) for _ in range( thread_count ) ]    
+    global thread_count
+    thread_count = 4
+    assert( canvas_width % thread_count == 0 )
+    global thread_surfaces
+    thread_surfaces = [ pygame.Surface( ( canvas_width / thread_count, canvas_height ) ) for _ in range( thread_count ) ]    
 
-clock = pygame.time.Clock()
+    global clock
+    clock = pygame.time.Clock()
 
-def put_pixel( x, y, color ):
-    display.set_at( ( x, y ), ( color.x, color.y, color.z ) )
+def put_pixel( surface, x, y, color ):
+    surface.set_at( ( x, y ), ( color.x, color.y, color.z ) )
 
 def render( pool ):
-    pool.map( render_thread, range( thread_count ) )
+    pool.map( render_thread, enumerate( thread_surfaces ) )
     # for index in range( thread_count ):
     #     display.blit( thread_surfaces[ index ], ( index * canvas_width / thread_count, 0 ) )
     display.blits( ( surface, ( index * canvas_width / thread_count, 0 ) ) for index, surface in enumerate( thread_surfaces ) )
 
-def render_thread( index ):
+def render_thread( index, surface ):
     for cx in range( canvas_width / thread_count ):
-        cx += index * canvas_width / thread_count
         for cy in range( canvas_height ):
-            color = ray_trace( cx, cy )
-            put_pixel( cx, cy, color )
+            origin = Camera.position
+            point = canvas_to_viewport( cx + index * canvas_width / thread_count, cy )
+            color = ray_trace( origin, point )
+            put_pixel( surface, cx, cy, color )
+
+def handle_events():
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            exit()
+        if event.type == pygame.KEYDOWN:
+            handle_inputs( event.key )
+
+def handle_inputs( key ):
+    match key:
+        case pygame.K_ESCAPE:
+            exit()
+        case pygame.K_w:
+            Camera.translate_forward()
+        case pygame.K_s:
+            Camera.translate_backward()
+        case pygame.K_a:
+            Camera.translate_left()
+        case pygame.K_d:
+            Camera.translate_right()
+        case pygame.K_LSHIFT:
+            Camera.translate_up()
+        case pygame.K_LCTRL:
+            Camera.translate_down()
+        case pygame.K_UP:
+            Camera.rotate_up()
+        case pygame.K_DOWN:
+            Camera.rotate_down()
+        case pygame.K_LEFT:
+            Camera.rotate_left()
+        case pygame.K_RIGHT:
+            Camera.rotate_right()
+        case pygame.K_p:
+            toggle_pause()
+
+def toggle_pause():
+    paused = not paused
+    if paused: print( "paused!" )
+    else: print( "resuming.." )
 
 def exit():
     pygame.quit()
     raise SystemExit
 
-with multiprocessing.Pool( thread_count ) as pool:
-    paused = False
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    exit()
-                elif event.key == pygame.K_w:
-                    Camera.translate_forward()
-                elif event.key == pygame.K_s:
-                    Camera.translate_backward()
-                elif event.key == pygame.K_a:
-                    Camera.translate_left()
-                elif event.key == pygame.K_d:
-                    Camera.translate_right()
-                elif event.key == pygame.K_LSHIFT:
-                    Camera.translate_up()
-                elif event.key == pygame.K_LCTRL:
-                    Camera.translate_down()
-                elif event.key == pygame.K_UP:
-                    Camera.rotate_up()
-                elif event.key == pygame.K_DOWN:
-                    Camera.rotate_down()
-                elif event.key == pygame.K_LEFT:
-                    Camera.rotate_left()
-                elif event.key == pygame.K_RIGHT:
-                    Camera.rotate_right()
-                elif event.key == pygame.K_p:
-                    paused = not paused
-                    if paused: print( "paused!" )
-                    else: print( "resuming.." )
-
-        if not paused:
-            render( pool )
-            print( "tick" )
-            print( Camera.position )
-            print( clock.get_rawtime() )
-        pygame.display.update()
-        clock.tick( 60 )
+if __name__ == "__main__":
+    initialize()
+    with multiprocessing.Pool( thread_count ) as pool:
+        paused = False
+        while True:
+            handle_events()
+            if not paused:
+                render( pool )
+                print( "tick" )
+                print( Camera.position )
+                print( clock.get_rawtime() )
+            pygame.display.update()
+            clock.tick( 60 )
