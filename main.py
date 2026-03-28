@@ -3,6 +3,7 @@ import pygame
 import pygame.surfarray
 import math
 import multiprocessing
+import ctypes
 
 class Vector:
     def __init__( self, x, y, z ):
@@ -269,32 +270,37 @@ def initialize():
     display = pygame.display.set_mode( ( canvas_width, canvas_height ) )
     pygame.display.set_caption( "py-render" )
 
-    global surfaces
-    surfaces = [ display.subsurface( ( index * canvas_width / thread_count, 0 ), ( canvas_width / thread_count, canvas_height ) ) for index in range( thread_count ) ]
+    global surface_array
+    surface_array = multiprocessing.Array( ctypes.c_uint8, canvas_width * canvas_height * 3, lock = False )
 
     global clock
     clock = pygame.time.Clock()
 
+def initialize_thread( shared_memory ):
+    global surface_array
+    surface_array = shared_memory
+
 def put_pixel( x, y, color ):
-    surface[ x, y ] = [ color.x, color.y, color.z ]
+    offset = x * canvas_height + y
+    offset *= 3
+    surface_array[ offset + 0 ] = int( color.x )
+    surface_array[ offset + 1 ] = int( color.y )
+    surface_array[ offset + 2 ] = int( color.z )
 
 def render( pool ):
-    surface_arrays = pool.map( render_thread, range( thread_count ) )
-    for surface, surface_array in zip( surfaces, surface_arrays ):
-        pygame.surfarray.blit_array( surface, surface_array )
-
-def initialize_thread():
-    global surface
-    surface = np.empty( ( canvas_width // thread_count, canvas_height, 3 ), dtype = np.uint8 )
+    pool.map( render_thread, range( thread_count ) )
+    pygame.surfarray.blit_array( display, 
+        np.frombuffer( surface_array, dtype = ctypes.c_uint8 ) 
+          .reshape( canvas_width, canvas_height, 3, copy = False ) )
 
 def render_thread( index ):
     for cx in range( canvas_width // thread_count ):
+        cx += index * canvas_width // thread_count
         for cy in range( canvas_height ):
             origin = Camera.position
-            point = canvas_to_viewport( cx + index * canvas_width / thread_count, cy )
+            point = canvas_to_viewport( cx, cy )
             color = ray_trace( origin, point )
             put_pixel( cx, cy, color )
-    return surface
 
 def handle_events():
     for event in pygame.event.get():
@@ -341,7 +347,8 @@ def exit():
 
 if __name__ == "__main__":
     initialize()
-    with multiprocessing.Pool( thread_count, initialize_thread ) as pool:
+    # The ( surface_array, ) syntax is something about arguments expansion or something
+    with multiprocessing.Pool( thread_count, initialize_thread, ( surface_array, ) ) as pool:
         paused = False
         while True:
             handle_events()
