@@ -105,51 +105,54 @@ class Sphere:
         return t2 if t2 > 0 else math.inf
 
 class Camera:
-    position = Vector( 0, 0, 0 )
-    forward = Vector( 0, 0, 1 )
-    up = Vector( 0, 1, 0 )
-    left = Vector( -1, 0, 0 )
+    def __init__( self ):
+        self.position = Vector( 0, 0, 0 )
+        self.forward = Vector( 0, 0, 1 )
+        self.up = Vector( 0, 1, 0 )
+        self.left = Vector( -1, 0, 0 )
 
-    def translate_up():
-        Camera.position += Camera.up
+    def translate_up( self ):
+        self.position += self.up
 
-    def translate_down():
-        Camera.position -= Camera.up
+    def translate_down( self ):
+        self.position -= self.up
 
-    def translate_forward():
-        Camera.position += Camera.forward
+    def translate_forward( self ):
+        self.position += self.forward
 
-    def translate_backward():
-        Camera.position -= Camera.forward
+    def translate_backward( self ):
+        self.position -= self.forward
 
-    def translate_left():
-        Camera.position += Camera.left
+    def translate_left( self ):
+        self.position += self.left
 
-    def translate_right():
-        Camera.position -= Camera.left
+    def translate_right( self ):
+        self.position -= self.left
 
     rotation_cos = math.cos( math.pi / 8 )
     rotation_sin = math.sin( math.pi / 8 )
 
-    def rotate_up():
-        forward = Camera.forward
-        Camera.forward = Camera.rotation_cos * Camera.forward + Camera.rotation_sin * Camera.up
-        Camera.up = Camera.rotation_cos * Camera.up - Camera.rotation_sin * forward
+    def rotate_up( self ):
+        forward = self.forward
+        self.forward = self.rotation_cos * self.forward + self.rotation_sin * self.up
+        self.up = self.rotation_cos * self.up - self.rotation_sin * forward
 
-    def rotate_down():
-        forward = Camera.forward
-        Camera.forward = Camera.rotation_cos * Camera.forward - Camera.rotation_sin * Camera.up
-        Camera.up = Camera.rotation_cos * Camera.up + Camera.rotation_sin * forward
+    def rotate_down( self ):
+        forward = self.forward
+        self.forward = self.rotation_cos * self.forward - self.rotation_sin * self.up
+        self.up = self.rotation_cos * self.up + self.rotation_sin * forward
 
-    def rotate_left():
-        left = Camera.left
-        Camera.left = Camera.rotation_cos * Camera.left - Camera.rotation_sin * Camera.forward
-        Camera.forward = Camera.rotation_cos * Camera.forward + Camera.rotation_sin * left
+    def rotate_left( self ):
+        left = self.left
+        self.left = self.rotation_cos * self.left - self.rotation_sin * self.forward
+        self.forward = self.rotation_cos * self.forward + self.rotation_sin * left
 
-    def rotate_right():
-        left = Camera.left
-        Camera.left = Camera.rotation_cos * Camera.left + Camera.rotation_sin * Camera.forward
-        Camera.forward = Camera.rotation_cos * Camera.forward - Camera.rotation_sin * left
+    def rotate_right( self ):
+        left = self.left
+        self.left = self.rotation_cos * self.left + self.rotation_sin * self.forward
+        self.forward = self.rotation_cos * self.forward - self.rotation_sin * left
+
+camera = Camera()
 
 canvas_width = 480
 canvas_height = 480
@@ -162,8 +165,8 @@ def canvas_to_viewport( cx, cy ):
     vx = viewport_width * ( cx - canvas_width / 2 ) / canvas_width
     vy = viewport_height * ( canvas_height / 2 - cy ) / canvas_height
 
-    return Camera.position + viewport_distance * Camera.forward \
-        - vx * Camera.left + vy * Camera.up
+    return camera.position + viewport_distance * camera.forward \
+        - vx * camera.left + vy * camera.up
 
 class Light:
     ambient = 0
@@ -276,9 +279,8 @@ def initialize():
     global clock
     clock = pygame.time.Clock()
 
-def initialize_thread( shared_memory ):
-    global surface_array
-    surface_array = shared_memory
+def initialize_thread( surface_array ):
+    globals()[ "surface_array" ] = surface_array
 
 def put_pixel( x, y, color ):
     offset = x * canvas_height + y
@@ -288,16 +290,18 @@ def put_pixel( x, y, color ):
     surface_array[ offset + 2 ] = int( color.z )
 
 def render( pool ):
-    pool.map( render_thread, range( thread_count ) )
+    pool.map( render_thread, ( ( index, camera ) for index in range( thread_count ) ) )
     pygame.surfarray.blit_array( display, 
         np.frombuffer( surface_array, dtype = ctypes.c_uint8 ) 
           .reshape( canvas_width, canvas_height, 3, copy = False ) )
 
-def render_thread( index ):
+def render_thread( tuple ):
+    ( index, camera ) = tuple
+    globals()[ "camera" ] = camera
     for cx in range( canvas_width // thread_count ):
         cx += index * canvas_width // thread_count
         for cy in range( canvas_height ):
-            origin = Camera.position
+            origin = camera.position
             point = canvas_to_viewport( cx, cy )
             color = ray_trace( origin, point )
             put_pixel( cx, cy, color )
@@ -314,25 +318,25 @@ def handle_inputs( key ):
         case pygame.K_ESCAPE:
             exit()
         case pygame.K_w:
-            Camera.translate_forward()
+            camera.translate_forward()
         case pygame.K_s:
-            Camera.translate_backward()
+            camera.translate_backward()
         case pygame.K_a:
-            Camera.translate_left()
+            camera.translate_left()
         case pygame.K_d:
-            Camera.translate_right()
+            camera.translate_right()
         case pygame.K_LSHIFT:
-            Camera.translate_up()
+            camera.translate_up()
         case pygame.K_LCTRL:
-            Camera.translate_down()
+            camera.translate_down()
         case pygame.K_UP:
-            Camera.rotate_up()
+            camera.rotate_up()
         case pygame.K_DOWN:
-            Camera.rotate_down()
+            camera.rotate_down()
         case pygame.K_LEFT:
-            Camera.rotate_left()
+            camera.rotate_left()
         case pygame.K_RIGHT:
-            Camera.rotate_right()
+            camera.rotate_right()
         case pygame.K_p:
             toggle_pause()
 
@@ -355,7 +359,7 @@ if __name__ == "__main__":
             if not paused:
                 render( pool )
                 print( "tick" )
-                print( Camera.position )
+                print( camera.position )
                 print( clock.get_rawtime() )
             pygame.display.update()
             clock.tick( 60 )
