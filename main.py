@@ -82,6 +82,18 @@ class Vector:
             lhs.x * rhs.y - lhs.y * rhs.x
         )
 
+    size = 3
+
+    def from_memory( self, memory, offset = 0 ):
+        self.x = memory[ offset + 0 ]
+        self.y = memory[ offset + 1 ]
+        self.z = memory[ offset + 2 ]
+
+    def to_memory( self, memory, offset = 0 ):
+        memory[ offset + 0 ] = self.x
+        memory[ offset + 1 ] = self.y
+        memory[ offset + 2 ] = self.z
+
 class Sphere:
     def __init__( self, position, radius, color, specular ):
         self.position = position
@@ -151,6 +163,20 @@ class Camera:
         left = self.left
         self.left = self.rotation_cos * self.left + self.rotation_sin * self.forward
         self.forward = self.rotation_cos * self.forward - self.rotation_sin * left
+
+    size = 4 * Vector.size
+
+    def from_memory( self, memory, offset = 0 ):
+        self.position.from_memory( memory, offset + 0 * Vector.size )
+        self.forward.from_memory( memory, offset + 1 * Vector.size )
+        self.up.from_memory( memory, offset + 2 * Vector.size )
+        self.left.from_memory( memory, offset + 3 * Vector.size )
+
+    def to_memory( self, memory, offset = 0 ):
+        self.position.to_memory( memory, offset + 0 * Vector.size )
+        self.forward.to_memory( memory, offset + 1 * Vector.size )
+        self.up.to_memory( memory, offset + 2 * Vector.size )
+        self.left.to_memory( memory, offset + 3 * Vector.size )
 
 camera = Camera()
 
@@ -276,11 +302,15 @@ def initialize():
     global surface_array
     surface_array = multiprocessing.Array( ctypes.c_uint8, canvas_width * canvas_height * 3, lock = False )
 
+    global camera_memory
+    camera_memory = multiprocessing.Array( ctypes.c_float, Camera.size, lock = False )
+
     global clock
     clock = pygame.time.Clock()
 
-def initialize_thread( surface_array ):
+def initialize_thread( surface_array, camera_memory ):
     globals()[ "surface_array" ] = surface_array
+    globals()[ "camera_memory" ] = camera_memory
 
 def put_pixel( x, y, color ):
     offset = x * canvas_height + y
@@ -290,14 +320,14 @@ def put_pixel( x, y, color ):
     surface_array[ offset + 2 ] = int( color.z )
 
 def render( pool ):
-    pool.map( render_thread, ( ( index, camera ) for index in range( thread_count ) ) )
+    camera.to_memory( camera_memory )
+    pool.map( render_thread, range( thread_count ) )
     pygame.surfarray.blit_array( display, 
         np.frombuffer( surface_array, dtype = ctypes.c_uint8 ) 
           .reshape( canvas_width, canvas_height, 3, copy = False ) )
 
-def render_thread( tuple ):
-    ( index, camera ) = tuple
-    globals()[ "camera" ] = camera
+def render_thread( index ):
+    camera.from_memory( camera_memory )
     for cx in range( canvas_width // thread_count ):
         cx += index * canvas_width // thread_count
         for cy in range( canvas_height ):
@@ -351,8 +381,7 @@ def exit():
 
 if __name__ == "__main__":
     initialize()
-    # The ( surface_array, ) syntax is something about arguments expansion or something
-    with multiprocessing.Pool( thread_count, initialize_thread, ( surface_array, ) ) as pool:
+    with multiprocessing.Pool( thread_count, initialize_thread, ( surface_array, camera_memory ) ) as pool:
         paused = False
         while True:
             handle_events()
